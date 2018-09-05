@@ -14,23 +14,17 @@ class SsmDeformator(Transformer):
         Number = 1
 
     def __init__(
-        self, param_key,
+        self,
         extent_rule=SsmDeformator.DeterminationUsage.ExplanatoryByDoubleSigma
     ):
-        self.param_key = param_key
         self.extent_rule = int(extent_rule)
         self.extent_method = self.get_extent_method(self.extent_rule)
 
-    def transform(self, x, **params):
-        model = params['shape_model']
+    def transform(self, model, x):
         ndim = self.extent_method(model)
         deformed = model['mean'] + \
-            model['score'][..., :ndim] * x[self.param_key]
+            model['score'][..., :ndim] * x[:ndim]
         return deformed
-
-    @classmethod
-    def parameterize(cls):
-        return ['shape_model']
 
     def get_extent_method(self, rule):
         usage_method = SsmDeformator.DeterminationUsage
