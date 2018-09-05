@@ -53,7 +53,7 @@ def main():
             conf = yaml.load(fp)
             optimizer_.add_framework(f, **conf)
 
-    optimizer_.setup():
+    optimizer_.setup()
     for population in optimizer_.generate():
         metrics = [calculator.calculate(p) for p in population]
         optimzier_.update(metrics)
