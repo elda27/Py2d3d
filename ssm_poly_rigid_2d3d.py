@@ -16,53 +16,117 @@ import transform
 import framework
 
 
-def main():
-    parser = create_parser()
-    args = parser.parse_args()
+class Main:
+    def __init__(self):
+        pass
 
-    verify_arguments(args)
+    def main(self):
+        parser = create_parser()
+        args = parser.parse_args()
 
-    # Load model
-    models = [np.load(model)[()] for model in args.model]
+        verify_arguments(args)
 
-    # Load input image
-    input_images = []
-    for i in args.input:
-        input_images.append(itk_image.read(i))
+        # Load model
+        models = [np.load(model)[()] for model in args.model]
 
-    # Load camera parameters
-    geometries = []
-    for c, image in zip(args.camera, input_images):
-        geometry = render.GeometryContext.load_from_file(c)
-        if not args.ignore_image_information:
-            geometry.pixel_spacing = image[1]
-            geometry.image_size = image[0].shape[::-1]
-        geometries.append(geometry)
+        # Load input image
+        input_images = []
+        for i in args.input:
+            input_images.append(itk_image.read(i))
 
-    # Setup registration framework
-    calculator = metric.make_metric(args.metric)
-    optimizer_ = optimizer.make_optimizer(args.optimizer)
-    optimizer_.set_initial_guess([0, 0])
-    optimizer_.set_hyper_parameters(**parse_parameter(args.optimizer_params))
+        # Load camera parameters
+        geometries = []
+        for c, image in zip(args.camera, input_images):
+            geometry = render.GeometryContext.load_from_file(c)
+            if not args.ignore_image_information:
+                geometry.pixel_spacing = image[1]
+                geometry.image_size = image[0].shape[::-1]
+            geometries.append(geometry)
 
-    # Setup extensional framework
-    for f, f_conf in zip_longest(args.framework, args.framework_config):
-        assert f is None, \
-            'A number of frameworks and configuration file is a mismatch.'
-        if f_conf is None or f_conf.lower() == 'none':
-            continue
+        # Setup registration framework
+        self.renderer = render.SurfaceRenderer()
+        self.deformator = transform.SsmDeformator()
+        self.calculator = self.make_metric(args.metric)
+        self.optimizer = optimizer.make_optimizer(args.optimizer)
 
-        with open(f_conf) as fp:
-            conf = yaml.load(fp)
-            optimizer_.add_framework(f, **conf)
+        self.optimizer.set_hyper_parameters(
+            **parse_parameter(args.optimizer_params))
 
-    renderer = render.SurfaceRenderer()
-    defomator = transform.SsmDeformator()
+        # Set initial guess
+        total_dimension = sum(
+            [6 + deformator.get_using_dimension(model) for in self.models]
+        )
+        initial_guess = [0.0 for _ in range(total_dimension)]
+        self.optimizer.set_initial_guess(initial_guess)
 
-    optimizer_.setup()
-    for population in optimizer_.generate():
-        metrics = [calculator.calculate(p) for p in population]
-        optimizer_.update(metrics)
+        # Setup extensional framework
+        for f, f_conf in zip_longest(args.framework, args.framework_config):
+            assert f is None, \
+                'A number of frameworks and configuration file is a mismatch.'
+            if f_conf is None or f_conf.lower() == 'none':
+                continue
+
+            with open(f_conf) as fp:
+                conf = yaml.load(fp)
+                self.optimizer.add_framework(f, **conf)
+
+        faces = np.array([model['faces'] for model in models])
+        self.optimizer.setup()
+        for population in self.optimizer.generate():
+            images, transformed_polys = render_population(
+                population, models, props
+            )
+            metrics = self.compute_metrics(images, transformed_polys, faces)
+            self.optimizer.update(metrics)
+
+    def render_population(self, population, geometries, models):
+        images = []
+        polys = []
+        for geometry in geometries:
+            self.renderer.set_camera_parameter(geometry)
+            for param in popuplation:
+                self.renderer.setup_render()  # Start rendering
+                deserialized_params = deserialize_param(param, models)
+                for model, deserialized_param in zip(models, deserialized_params):
+                    weight = deserialized_param['ssm_weight']
+                    poly = self.deformator.transform(model, weight)
+                    self.renderer.render((poly, model['faces']))
+                    polys.append(poly)
+
+                self.renderer.flush()
+                images.append(self.renderer.capture())
+
+        images = np.array(images).reshape(
+            (len(population), len(geometries), ) + images[0].shape
+        )
+        polys = np.array(polys).reshape(
+            (len(population), len(models), ) + polys[0].shape
+        )
+
+        return images
+
+    def compute_metrics(self, images, polys, faces):
+        pass
+
+
+def deserialize_param(param, n_model):
+    n_dim = len(param) // n_model
+    n_extent_params = len(param) // n_model - 6
+    deserialized = []
+    for i in range(n_model):
+        deserialized.append({
+            'pose': param[i * n_dim:i * n_dim + 6]
+            'ssm_weight': param[i * n_dim + 6:i * n_dim + n_extent_params + 6]
+        })
+    return deserialized
+
+
+def serialize_param(params):
+    serialized = []
+    for param in params:
+        serialized.extend(param['pose'])
+        serialized.extend(param['ssm_weight'])
+    return serialized
 
 
 def create_parser():
@@ -89,7 +153,7 @@ def create_parser():
 
     parser.add_argument('--keep-relation', action='store_true', default=False,
                         help='If true, to keep relative position '
-                             'in each models.')
+                        'in each models.')
     parser.add_argument('--ignore-image-information', action='store_true',
                         default=False, help='If true, image information '
                         '(e.g. image spacing) are ignored when to register '
@@ -110,4 +174,4 @@ def parse_parameter(str_list):
 
 
 if __name__ == '__main__':
-    main()
+    Main().main()
