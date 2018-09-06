@@ -1,3 +1,4 @@
+import numpy as np
 import cma
 from .optimizer import Optimizer
 
@@ -24,12 +25,13 @@ class CmaEsOptimizer(Optimizer):
     """
 
     def __init__(self):
+        super().__init__()
         self.optimizer = None
         self.sigma = None
         self.options = cma.CMAOptions.defaults()
 
     def set_hyper_parameters(self, **params):
-        self.sigma = params.pop('sigma')
+        self.sigma = np.asarray(params.pop('sigma'))
         self.options.update(params)
 
     def setup(self):

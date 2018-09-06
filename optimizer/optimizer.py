@@ -14,9 +14,9 @@ class Optimizer(metaclass=ABCMeta):
         self.frameworks.append(framework)
 
     def set_initial_guess(self, x0: np.ndarray):
-        self.initial_guess = x0
+        self.initial_guess = np.asarray(x0)
 
-    def set_deserialization(self, deserializer: Callable[list]):
+    def set_deserialization(self, deserializer: Callable[[list], dict]):
         """Set deserializer in order to restore the structure
         of optimizing variable.
 
