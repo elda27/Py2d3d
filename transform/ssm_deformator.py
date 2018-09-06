@@ -47,7 +47,7 @@ class SsmDeformator(Transformer):
         for i, e in enumerate(model['explained']):
             total += e
             if total >= threshold:
-                return i
+                return i + 1
         return len(model['explained'])
 
     def make_explanatory_by_number(self, model, number):
