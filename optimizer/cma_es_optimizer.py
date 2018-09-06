@@ -35,6 +35,7 @@ class CmaEsOptimizer(Optimizer):
         self.options.update(params)
 
     def setup(self):
+        self.optimizing = True
         self.optimizer = cma.CMAEvolutionStrategy(
             self.initial_guess, self.sigma, self.options
         )
@@ -45,4 +46,6 @@ class CmaEsOptimizer(Optimizer):
 
     def update_core(self, metric):
         self.optimizer.tell(self.population, metric)
-        self.optimizing = self.optimizer.stop()
+        if self.optimizer.stop():
+            self.optimizing = False
+            self.minimal = self.optimizer.result.xbest
