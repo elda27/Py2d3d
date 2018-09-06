@@ -15,7 +15,7 @@ class SsmDeformator(Transformer):
 
     def __init__(
         self,
-        extent_rule=SsmDeformator.DeterminationUsage.ExplanatoryByDoubleSigma
+        extent_rule=DeterminationUsage.ExplanatoryByDoubleSigma
     ):
         self.extent_rule = int(extent_rule)
         self.extent_method = self.get_extent_method(self.extent_rule)
@@ -25,6 +25,9 @@ class SsmDeformator(Transformer):
         deformed = model['mean'] + \
             model['score'][..., :ndim] * x[:ndim]
         return deformed
+
+    def get_using_dimension(self, model):
+        return self.extent_method(model)
 
     def get_extent_method(self, rule):
         usage_method = SsmDeformator.DeterminationUsage
