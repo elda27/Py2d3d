@@ -2,6 +2,7 @@ from abc import abstractmethod, ABCMeta
 from typing import Callable
 
 import numpy as np
+from contextlib import contextmanager, ExitStack
 
 
 class Optimizer(metaclass=ABCMeta):
@@ -9,6 +10,7 @@ class Optimizer(metaclass=ABCMeta):
         self.minimal = None
         self.frameworks = []
         self.optimizing = True
+        self.iteration = 0
 
     def add_framework(self, framework):
         self.frameworks.append(framework)
@@ -35,9 +37,17 @@ class Optimizer(metaclass=ABCMeta):
             return self.deserializer(self.minimal)
         return {'param': self.minimal}
 
+    @contextmanager
     def setup(self):
-        # Do nothing on base class
-        pass
+        """ Setup optimization and frameworks.
+            Derrived classes should override setup_core method
+            instead of this method.
+        """
+        self.setup_core()
+        with ExitStack() as stack:
+            for framework in self.frameworks:
+                stack.enter_context(framework.setup(self))
+            yield
 
     def generate(self):
         while self.optimizing:
@@ -48,14 +58,15 @@ class Optimizer(metaclass=ABCMeta):
                 next(worker)
 
             # Generate population
-            population = self.generate_core()
+            self.population = self.generate_core()
+            self.iteration = self.iteration + 1
 
             # Execute post-process
             for worker in workers:
                 # Send population
-                population = worker.send(population)
+                self.population = worker.send(self.population)
 
-            yield population
+            yield self.population
 
     def update(self, metric):
         workers = [framework.update(metric) for framework in self.frameworks]
@@ -64,12 +75,23 @@ class Optimizer(metaclass=ABCMeta):
             next(worker)
 
         # Generate population
+        self.metric = metric
         self.update_core(metric)
 
         # Execute post-process
         for worker in workers:
             # Send population
             worker.send(self)
+
+    def setup_core(self):
+        pass
+
+    def print_state(self, stream):
+        i = np.argmax(self.metric)
+        stream.write('iter:{:08d}, bx:{}, by:{}'.format(
+            self.iteration,
+            self.population[i], self.metric[i],
+        ))
 
     @abstractmethod
     def generate_core(self):

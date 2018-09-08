@@ -34,7 +34,7 @@ class CmaEsOptimizer(Optimizer):
         self.sigma = np.asarray(params.pop('sigma'))
         self.options.update(params)
 
-    def setup(self):
+    def setup_core(self):
         self.optimizing = True
         self.optimizer = cma.CMAEvolutionStrategy(
             self.initial_guess, self.sigma, self.options

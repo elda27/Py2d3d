@@ -6,8 +6,9 @@ from itertools import zip_longest
 
 import vtk
 import numpy as np
-
 import SimpleITK as sitk
+import matplotlib.pyplot as plt
+
 from vtk_util import itk_image
 import metric
 import render
@@ -18,7 +19,7 @@ import framework
 
 class Main:
     def __init__(self):
-        pass
+        self.history = {}
 
     def main(self):
         parser = create_parser()
@@ -70,14 +71,20 @@ class Main:
                 conf = yaml.load(fp)
                 self.optimizer.add_framework(f, **conf)
 
+        self.optimizer.add_framework(framework.TqdmReport())
+        self.optimizer.add_framework(framework.MatplotReport(self.draw_status))
+        self.optimizer.add_framework(HistoryCapture(self.history))
+
         faces = np.array([model['faces'] for model in models])
-        self.optimizer.setup()
-        for population in self.optimizer.generate():
-            images, transformed_polys = render_population(
-                population, models, props
-            )
-            metrics = self.compute_metrics(images, transformed_polys, faces)
-            self.optimizer.update(metrics)
+        with self.optimizer.setup():
+            for population in self.optimizer.generate():
+                images, transformed_polys = render_population(
+                    population, models, props
+                )
+                metrics = self.compute_metrics(
+                    images, transformed_polys, faces
+                )
+                self.optimizer.update(metrics)
 
     def render_population(self, population, geometries, models):
         images = []
@@ -107,6 +114,21 @@ class Main:
 
     def compute_metrics(self, images, polys, faces):
         pass
+
+    def draw_status(self):
+        plt.
+
+
+class HistoryCapture(framework.Framework):
+    def __init__(self, container={}):
+        self.c = container
+
+    def update_post(self, opt):
+        self.c.setdefault('population', []).append(opt.population)
+        self.c.setdefault('metrics', []).append(opt.metrics)
+        self.c.setdefault('m_population', []).append(
+            np.mean(opt.population, axis=0))
+        self.c.setdefault('m_metrics', []).append(np.mean(opt.metrics))
 
 
 def deserialize_param(param, n_model):
