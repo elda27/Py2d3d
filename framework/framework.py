@@ -24,6 +24,17 @@ class Framework:
         >>> return result
     """
 
+    def setup(self, parent):
+        """Setup framework objects before optimization
+        Args:
+            parent: Optimizer object
+
+        Returns:
+            tuple or list: The list of object needing to manage by with statement.
+        """
+
+        pass
+
     def generate(self, optimizer):
         """ A pre and post process to generate optimizing variables.
         The optimizer class gives population of optimizing variables.
