@@ -47,7 +47,7 @@ class Main:
         # Setup registration framework
         self.renderer = render.SurfaceRenderer()
         self.deformator = transform.SsmDeformator()
-        self.calculator = self.make_metric(args.metric)
+        self.calculators = [metric.make_metric(m) for m in args.metric]
         self.optimizer = optimizer.make_optimizer(args.optimizer)
 
         self.optimizer.set_hyper_parameters(
