@@ -17,10 +17,10 @@ def test_cma_es(function, x, y, options):
     x0 = np.random.random(x.shape)
     opt.set_initial_guess(x0)
     opt.set_hyper_parameters(**options)
-    opt.setup()
-    for population in opt.generate():
-        metric = [function(p) for p in population]
-        opt.update(metric)
+    with opt.setup():
+        for population in opt.generate():
+            metric = [function(p) for p in population]
+            opt.update(metric)
 
     assert abs(y - function(opt.minimal)) < 1e-2
     # assert y == pytest.approx(function(opt.minimal), 0.01)
