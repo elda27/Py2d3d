@@ -23,7 +23,7 @@ def ackley_function(x):
 
 def rosenbrock_function(x):
     """ Rosenblock polynominal.
-    Minimal: (y, x) = (0, 1)
+    Minimal: (y, x) = (1, 0)
 
     https://en.wikipedia.org/wiki/Rosenbrock_function
     """
