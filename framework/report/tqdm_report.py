@@ -22,5 +22,6 @@ class TqdmReport(Framework):
         return metric
 
     def update_post(self, optimizer):
-        if (optimizer.iteration % self.iteration == 0):
+        self.logger.update()
+        if (optimizer.iteration % self.interval == 0):
             optimizer.print_state(self.logger)
