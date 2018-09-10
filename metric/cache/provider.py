@@ -1,4 +1,4 @@
-from metric.cache_process.image import Image
+from metric.cache.image import Image
 
 
 class Provider:
