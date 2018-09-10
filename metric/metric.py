@@ -1,7 +1,10 @@
 from abc import ABCMeta, abstractmethod
+from metric.cache.provider import Provider
 
 
 class Metric(metaclass=ABCMeta):
+    provider = Provider()
+
     @abstractmethod
     def calculate(self, *args, **kwargs):
         """ Calculate metric.
@@ -22,3 +25,7 @@ class Metric(metaclass=ABCMeta):
         """
 
         raise NotImplementedError()
+
+    @classmethod
+    def provide(cls, image):
+        return cls.provider.provide(image)
