@@ -1,4 +1,9 @@
 from metric.cache.invoke_cache_list import InvokeCacheList
+import pycuda.gpuarray as gpuarray
+
+
+def to_gpu(image):
+    return gpuarray.to_gpu(image.astype(np.float32))
 
 
 class Image:
@@ -19,4 +24,7 @@ class Image:
         self.cache[id_proc] = InvokeCacheList()
         self.cache[id_proc][arg_pair] = processed
 
-        return processed
+        return Image(processed)
+
+    def to_pycuda(self):
+        return self.process(to_gpu, self.image)
