@@ -16,6 +16,8 @@ import optimizer
 import transform
 import framework
 
+from plot_util import SubplotManager
+
 
 class Main:
     def __init__(self):
@@ -75,16 +77,24 @@ class Main:
         self.optimizer.add_framework(framework.MatplotReport(self.draw_status))
         self.optimizer.add_framework(HistoryCapture(self.history))
 
+        proj_images = None
+
         faces = np.array([model['faces'] for model in models])
         with self.optimizer.setup():
             for population in self.optimizer.generate():
+                if proj_images is None:
+                    proj_images = np.tile(np.expand_dims(
+                        proj_image, axis=2), (1, 1, len(population))
+                    )
+
                 images, transformed_polys = render_population(
                     population, models, props
                 )
-                metrics = self.compute_metrics(
-                    images, transformed_polys, faces
-                )
-                self.optimizer.update(metrics)
+
+                metrics = sum([c.calculate(proj_images, images)
+                               for c in self.calculators])
+
+                self.optimizer.update(metrics.tolist())
 
     def render_population(self, population, geometries, models):
         images = []
@@ -112,11 +122,27 @@ class Main:
 
         return images
 
-    def compute_metrics(self, images, polys, faces):
-        pass
-
     def draw_status(self):
-        plt.
+        manager = SubplotManager(1, 3)
+
+        with manager as fig:
+            plt.plot(self.history.c['m_metrics'])
+            plt.title('Similarity')
+
+        with manager as fig:
+            plt.plot(self.history.c['m_population'])
+            plt.title('Pose')
+
+        with manager as fig:
+            current_pose = plt.history.c['m_population'][-1]
+            surface_image = self.render_population(
+                current_pose, self.geometries, self.models
+            )
+            surface_image = np.concatenate([
+                surface_image[i] for i in range(len(surface_image))
+            ], axis=0)
+            plt.imshow(surface_image)
+            plt.title('Current estimation' + str(current_pose))
 
 
 class HistoryCapture(framework.Framework):
